@@ -1,0 +1,60 @@
+version: '3.8'
+
+networks:
+  ente:
+
+services:
+  postgres:
+    image: postgres:14
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ente
+      POSTGRES_PASSWORD: ente
+      POSTGRES_DB: ente
+    volumes:
+      - ./postgres-data:/var/lib/postgresql/data
+    networks:
+      - ente
+
+  redis:
+    image: redis:6
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - ./redis-data:/data
+    networks:
+      - ente
+
+  ente-server:
+    image: enteio/server:latest
+    restart: unless-stopped
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      DATABASE_URL: postgres://ente:ente@postgres:5432/ente
+      REDIS_URL: redis://redis:6379
+      ENTE_SERVER_URL: http://localhost:8000
+      ENTE_MEDIA_SERVER_URL: http://localhost:9000
+      ENTE_AUTH_SECRET: "REPLACE_THIS_WITH_A_RANDOM_STRING"
+    ports:
+      - "8000:8000"
+    networks:
+      - ente
+
+  ente-media-server:
+    image: enteio/media-server:latest
+    restart: unless-stopped
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      DATABASE_URL: postgres://ente:ente@postgres:5432/ente
+      REDIS_URL: redis://redis:6379
+      ENTE_AUTH_SECRET: "REPLACE_THIS_WITH_A_RANDOM_STRING"
+    ports:
+      - "9000:9000"
+    volumes:
+      - ./media-data:/data
+    networks:
+      - ente
